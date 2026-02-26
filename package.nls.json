@@ -1,0 +1,9 @@
+{
+    "ext.displayName": "AG Autopilot",
+    "ext.description": "Auto-accept all confirmation dialogs from Antigravity Agent — sidebar panel + operation stats",
+    "viewContainer.title": "AG Autopilot",
+    "view.name": "AG Autopilot",
+    "cmd.install": "AG Autopilot: Install Auto-Accept Script",
+    "cmd.uninstall": "AG Autopilot: Uninstall Auto-Accept Script",
+    "cmd.toggle": "AG Autopilot: Pause/Resume Auto-Accept"
+}

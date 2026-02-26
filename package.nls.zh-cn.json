@@ -1,0 +1,9 @@
+{
+    "ext.displayName": "AG Autopilot",
+    "ext.description": "自动接受 Antigravity Agent 的所有确认弹窗，侧边栏管理面板 + 操作统计",
+    "viewContainer.title": "AG Autopilot",
+    "view.name": "AG Autopilot",
+    "cmd.install": "AG Autopilot: 安装自动确认脚本",
+    "cmd.uninstall": "AG Autopilot: 卸载自动确认脚本",
+    "cmd.toggle": "AG Autopilot: 暂停/恢复自动确认"
+}
