@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 
 // ============================================================
-// AG Autopilot v0.2.0
+// AG Autopilot v0.1.2
 // ============================================================
 
 const STATE_FILENAME = 'auto-accept.state.json';
@@ -14,6 +14,7 @@ const MARKER_START = '<!-- [AG-AUTOPILOT-START] -->';
 const MARKER_END = '<!-- [AG-AUTOPILOT-END] -->';
 const WORKBENCH_REL = path.join('out', 'vs', 'code', 'electron-browser', 'workbench');
 const CHECKSUM_KEY = 'vs/code/electron-browser/workbench/workbench.html';
+const AGENT_HTML_FILENAME = 'workbench-jetski-agent.html';
 
 // === i18n ===
 const isZh = vscode.env.language.startsWith('zh');
@@ -44,12 +45,12 @@ const i18n = {
 
 // === Injected auto-click JS ===
 function getAutoAcceptJS(): string {
-    return `// AG Autopilot - Auto Accept Script v0.2.0
+    return `// AG Autopilot - Auto Accept Script v0.1.2
 (function() {
     'use strict';
     var CONFIG = {
         enabled: true,
-        acceptKeywords: ['Run', 'Accept', 'Allow', 'Approve'],
+        acceptKeywords: ['Run', 'Allow'],
         rejectKeywords: ['Reject', 'Cancel', 'No', 'Close', 'Deny', 'Always run'],
         logPrefix: '[AG-Autopilot]',
         stateFile: './${STATE_FILENAME}'
@@ -224,7 +225,7 @@ function getAutoAcceptJS(): string {
         return !paused;
     };
 
-    console.log(CONFIG.logPrefix, 'Loaded v0.2.0, starting in 3s');
+    console.log(CONFIG.logPrefix, 'Loaded v0.1.2, starting in 3s');
 })();
 `;
 }
@@ -237,10 +238,12 @@ function getPaths() {
         appRoot,
         workbenchDir,
         htmlPath: path.join(workbenchDir, 'workbench.html'),
+        agentHtmlPath: path.join(workbenchDir, AGENT_HTML_FILENAME),
         jsPath: path.join(workbenchDir, JS_FILENAME),
         statePath: path.join(workbenchDir, STATE_FILENAME),
         productPath: path.join(appRoot, 'product.json'),
         backupHtml: path.join(workbenchDir, 'workbench.html.ag-backup'),
+        backupAgentHtml: path.join(workbenchDir, AGENT_HTML_FILENAME + '.ag-backup'),
         backupProduct: path.join(appRoot, 'product.json.ag-backup'),
     };
 }
@@ -292,6 +295,7 @@ async function doInstall(): Promise<boolean> {
         return false;
     }
     try {
+        // --- Main workbench.html ---
         let content = fs.readFileSync(p.htmlPath, 'utf-8');
         if (content.includes(MARKER_START)) {
             content = content.substring(0, content.indexOf(MARKER_START)) +
@@ -304,6 +308,20 @@ async function doInstall(): Promise<boolean> {
         content = content.replace('</html>', tag + '</html>');
         fs.writeFileSync(p.htmlPath, content, 'utf-8');
         updateProductChecksum(p.productPath, CHECKSUM_KEY, computeChecksum(p.htmlPath));
+
+        // --- Agent Manager workbench-jetski-agent.html ---
+        if (fs.existsSync(p.agentHtmlPath)) {
+            let agentContent = fs.readFileSync(p.agentHtmlPath, 'utf-8');
+            if (agentContent.includes(MARKER_START)) {
+                agentContent = agentContent.substring(0, agentContent.indexOf(MARKER_START)) +
+                    agentContent.substring(agentContent.indexOf(MARKER_END) + MARKER_END.length);
+            }
+            if (!fs.existsSync(p.backupAgentHtml)) { fs.copyFileSync(p.agentHtmlPath, p.backupAgentHtml); }
+            agentContent = agentContent.replace('</html>', tag + '</html>');
+            fs.writeFileSync(p.agentHtmlPath, agentContent, 'utf-8');
+            console.log('[AG-Autopilot] Also injected into Agent Manager HTML');
+        }
+
         return true;
     } catch (err: any) {
         vscode.window.showErrorMessage(i18n.installFail(err.message));
@@ -314,6 +332,7 @@ async function doInstall(): Promise<boolean> {
 async function doUninstall(): Promise<boolean> {
     const p = getPaths();
     try {
+        // --- Main workbench.html ---
         if (fs.existsSync(p.backupHtml)) {
             fs.copyFileSync(p.backupHtml, p.htmlPath);
         } else {
@@ -330,6 +349,19 @@ async function doUninstall(): Promise<boolean> {
         } else {
             updateProductChecksum(p.productPath, CHECKSUM_KEY, computeChecksum(p.htmlPath));
         }
+
+        // --- Agent Manager workbench-jetski-agent.html ---
+        if (fs.existsSync(p.backupAgentHtml)) {
+            fs.copyFileSync(p.backupAgentHtml, p.agentHtmlPath);
+        } else if (fs.existsSync(p.agentHtmlPath)) {
+            let agentContent = fs.readFileSync(p.agentHtmlPath, 'utf-8');
+            if (agentContent.includes(MARKER_START)) {
+                agentContent = agentContent.substring(0, agentContent.indexOf(MARKER_START)) +
+                    agentContent.substring(agentContent.indexOf(MARKER_END) + MARKER_END.length);
+                fs.writeFileSync(p.agentHtmlPath, agentContent, 'utf-8');
+            }
+        }
+
         return true;
     } catch (err: any) {
         vscode.window.showErrorMessage(i18n.uninstallFail(err.message));

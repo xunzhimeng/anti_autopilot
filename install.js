@@ -1,5 +1,5 @@
 /**
- * Antigravity Auto-Accept Install Script v2
+ * Antigravity Auto-Accept Install Script v2.1
  * 
  * Fixed v1 CSP issue: writes script to standalone .js file, referenced via <script src>
  * 
@@ -110,10 +110,12 @@ const AUTO_ACCEPT_JS = `// Antigravity Auto-Accept v2
 const MARKER_START = '<!-- [AUTO-ACCEPT-V2-START] -->';
 const MARKER_END = '<!-- [AUTO-ACCEPT-V2-END] -->';
 const JS_FILENAME = 'auto-accept.js';
+const AGENT_HTML_FILENAME = 'workbench-jetski-agent.html';
 
 // === Install ===
 function install(workbenchDir) {
     const htmlPath = path.join(workbenchDir, 'workbench.html');
+    const agentHtmlPath = path.join(workbenchDir, AGENT_HTML_FILENAME);
     const jsPath = path.join(workbenchDir, JS_FILENAME);
     let content = fs.readFileSync(htmlPath, 'utf-8');
 
@@ -140,6 +142,24 @@ function install(workbenchDir) {
     content = content.replace('</html>', scriptTag + '</html>');
     fs.writeFileSync(htmlPath, content, 'utf-8');
 
+    // 3. Also inject into Agent Manager HTML
+    if (fs.existsSync(agentHtmlPath)) {
+        let agentContent = fs.readFileSync(agentHtmlPath, 'utf-8');
+        if (agentContent.includes(MARKER_START)) {
+            const startIdx = agentContent.indexOf(MARKER_START);
+            const endIdx = agentContent.indexOf(MARKER_END) + MARKER_END.length;
+            agentContent = agentContent.substring(0, startIdx) + agentContent.substring(endIdx);
+        }
+        const agentBackupPath = agentHtmlPath + '.backup';
+        if (!fs.existsSync(agentBackupPath)) {
+            fs.copyFileSync(agentHtmlPath, agentBackupPath);
+            console.log('Backed up:', agentBackupPath);
+        }
+        agentContent = agentContent.replace('</html>', scriptTag + '</html>');
+        fs.writeFileSync(agentHtmlPath, agentContent, 'utf-8');
+        console.log('✅ Also injected into Agent Manager HTML');
+    }
+
     console.log('');
     console.log('✅ Installed successfully!');
     console.log('');
@@ -151,9 +171,12 @@ function install(workbenchDir) {
 // === Uninstall ===
 function uninstall(workbenchDir) {
     const htmlPath = path.join(workbenchDir, 'workbench.html');
+    const agentHtmlPath = path.join(workbenchDir, AGENT_HTML_FILENAME);
     const jsPath = path.join(workbenchDir, JS_FILENAME);
     const backupPath = htmlPath + '.backup';
+    const agentBackupPath = agentHtmlPath + '.backup';
 
+    // --- Main workbench.html ---
     if (fs.existsSync(backupPath)) {
         fs.copyFileSync(backupPath, htmlPath);
         console.log('✅ workbench.html restored');
@@ -164,7 +187,22 @@ function uninstall(workbenchDir) {
             const endIdx = content.indexOf(MARKER_END) + MARKER_END.length;
             content = content.substring(0, startIdx) + content.substring(endIdx);
             fs.writeFileSync(htmlPath, content, 'utf-8');
-            console.log('✅ Injected tags removed');
+            console.log('✅ Injected tags removed from workbench.html');
+        }
+    }
+
+    // --- Agent Manager HTML ---
+    if (fs.existsSync(agentBackupPath)) {
+        fs.copyFileSync(agentBackupPath, agentHtmlPath);
+        console.log('✅ Agent Manager HTML restored');
+    } else if (fs.existsSync(agentHtmlPath)) {
+        let agentContent = fs.readFileSync(agentHtmlPath, 'utf-8');
+        if (agentContent.includes(MARKER_START)) {
+            const startIdx = agentContent.indexOf(MARKER_START);
+            const endIdx = agentContent.indexOf(MARKER_END) + MARKER_END.length;
+            agentContent = agentContent.substring(0, startIdx) + agentContent.substring(endIdx);
+            fs.writeFileSync(agentHtmlPath, agentContent, 'utf-8');
+            console.log('✅ Injected tags removed from Agent Manager HTML');
         }
     }
 
